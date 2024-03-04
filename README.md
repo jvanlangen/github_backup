@@ -11,6 +11,7 @@ docker run \
     -e USERNAME="<username>" \
     -e EMAIL="<email>" \
     -e BACKUP_TIME="02:00" \
+    -e TIMEZONE="Europe/Amsterdam"
     -v <local_path>:/data \
     jvanlangen/github_backup:latest
 ```
@@ -29,6 +30,7 @@ services:
       - USERNAME=<username>
       - EMAIL=<email>
       - BACKUP_TIME=02:00
+      - TIMEZONE="Europe/Amsterdam"
     volumes:
       - <local_path>:/data
 ```
