@@ -5,6 +5,7 @@ Cloning/updating all repositories from an organization daily to a local file sys
 
 ```
 docker run \
+    --name github_backup
     -e ORGANIZATION="<organization>" \
     -e ACCESS_TOKEN="<github_access_token>" \
     -e USERNAME="<username>" \
@@ -21,6 +22,7 @@ version: '3'
 services:
   github_backup:
     image: jvanlangen/github_backup:latest
+    container_name: github_backup
     environment:
       - ORGANIZATION=<organization>
       - ACCESS_TOKEN=<github_access_token>
