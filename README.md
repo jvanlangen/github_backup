@@ -4,7 +4,14 @@ Cloning/updaing all repositories from an organization to a local file system.
 ## Commandline
 
 ```
-docker run -e ORGANIZATION="<organization>" -e ACCESS_TOKEN="<github_access_token>" -e USERNAME="<username>" -e EMAIL="<email>" -v <local_path>:/data -e BACKUP_TIME="02:00"  github_backup
+docker run \
+    -e ORGANIZATION="<organization>" \
+    -e ACCESS_TOKEN="<github_access_token>" \
+    -e USERNAME="<username>" \
+    -e EMAIL="<email>" \
+    -e BACKUP_TIME="02:00" \
+    -v <local_path>:/data \
+    github_backup
 ```
 
 ## Docker compose
