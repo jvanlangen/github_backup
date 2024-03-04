@@ -45,6 +45,12 @@ git_email = os.getenv('EMAIL', '')
 subprocess.run(['git', 'config', '--global', 'user.name', git_username])
 subprocess.run(['git', 'config', '--global', 'user.email', git_email])
 
+subprocess.run(['git', 'config', '--global', 'credential.helper', 'store --file ~/.git-credentials'], check=True)
+
+credential_helper_script = f'!f() {{ echo "username={git_username}"; echo "password={personal_access_token}"; }}; f'
+subprocess.run(['git', 'config', '--global', 'credential.helper', credential_helper_script], shell=True, check=True)
+
+
 # Parse the desired timezone
 timezone = pytz.timezone(desired_timezone)
 os.environ["TZ"] = desired_timezone
@@ -88,12 +94,12 @@ def backup_job():
                 print(url)
 
                 # add the username and token to the url
-                url = add_credentials_to_clone_url(url, git_username, personal_access_token)
-                folder_name = f"/data/{name}"
+                # url = add_credentials_to_clone_url(url, git_username, personal_access_token)
 
-                # Check if the directory exists, if not, create it
-                if not os.path.exists(folder_name):
-                    os.makedirs(folder_name)
+                if not os.path.exists("/data"):
+                    os.makedirs("/data")
+
+                folder_name = f"/data/{name}"
 
                 # Check if the repository is already cloned, if not, clone it
                 if not os.path.exists(f"{folder_name}/.git"):
@@ -129,6 +135,9 @@ print(f"Current timezone: {time.tzname[0]}")
 # Get current time
 current_time = datetime.now(timezone)
 print(f"Current time: {current_time}")
+
+# test launch
+# backup_job()
 
 while True:
     # Check schedule
