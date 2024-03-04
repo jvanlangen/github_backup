@@ -11,7 +11,7 @@ docker run \
     -e EMAIL="<email>" \
     -e BACKUP_TIME="02:00" \
     -v <local_path>:/data \
-    github_backup
+    jvanlangen/github_backup:latest
 ```
 
 ## Docker compose
@@ -20,7 +20,7 @@ version: '3'
 
 services:
   github_backup:
-    image: github_backup  # Vervang github_backup door de naam van je image
+    image: jvanlangen/github_backup:latest
     environment:
       - ORGANIZATION=<organization>
       - ACCESS_TOKEN=<github_access_token>
