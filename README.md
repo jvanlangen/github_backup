@@ -1,5 +1,5 @@
 # github_backup
-Cloning/updating all repositories from an organization to a local file system.
+Cloning/updating all repositories from an organization daily to a local file system.
 
 ## Commandline
 
