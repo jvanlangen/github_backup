@@ -17,8 +17,14 @@ from functools import partial
 # auto flush
 print = partial(print, flush=True)
 
-# Read TIMEZONE environment variable, default to Europe/Amsterdam
-desired_timezone = os.getenv("TIMEZONE", "Europe/Amsterdam")
+# Read TIMEZONE environment variable, for example: Europe/Amsterdam
+desired_timezone = os.getenv("TIMEZONE", "")
+
+# Check if the organization name is set
+if not desired_timezone:
+    raise ValueError(
+        "desired_timezone is not set. Please provide a timezone using the " +
+        "TIMEZONE environment variable. for example: Europe/Amsterdam")
 
 
 # Organization name and GitHub access token
@@ -27,7 +33,8 @@ organization = os.getenv('ORGANIZATION', '')
 # Check if the organization name is set
 if not organization:
     raise ValueError(
-        "Organization name is not set. Please provide an organization name using the ORGANIZATION environment variable.")
+        "Organization name is not set. Please provide an organization name " +
+        "using the ORGANIZATION environment variable.")
 
 
 personal_access_token = os.getenv('ACCESS_TOKEN', '')
@@ -35,7 +42,8 @@ personal_access_token = os.getenv('ACCESS_TOKEN', '')
 # Check if the personal access token is set
 if not personal_access_token:
     raise ValueError(
-        "Personal access token is not set. Please provide a valid access token using the ACCESS_TOKEN environment variable.")
+        "Personal access token is not set. Please provide a valid access token " +
+        "using the ACCESS_TOKEN environment variable.")
 
 
 # Default backup time is set to 2:00
@@ -49,10 +57,10 @@ git_email = os.getenv('EMAIL', '')
 subprocess.run(['git', 'config', '--global', 'user.name', git_username])
 subprocess.run(['git', 'config', '--global', 'user.email', git_email])
 
-subprocess.run(['git', 'config', '--global', 'credential.helper', 'store --file ~/.git-credentials'], check=True)
+# subprocess.run(['git', 'config', '--global', 'credential.helper', 'store --file ~/.git-credentials'], check=True)
 
-credential_helper_script = f'!f() {{ echo "username={git_username}"; echo "password={personal_access_token}"; }}; f'
-subprocess.run(['git', 'config', '--global', 'credential.helper', credential_helper_script], shell=True, check=True)
+# credential_helper_script = f'!f() {{ echo "username={git_username}"; echo "password={personal_access_token}"; }}; f'
+# subprocess.run(['git', 'config', '--global', 'credential.helper', credential_helper_script], shell=True, check=True)
 
 
 # Parse the desired timezone
@@ -77,10 +85,11 @@ def add_credentials_to_clone_url(clone_url, username, token):
 
 def backup_job():
     """Perform organization repository synchronization."""
+    global url, timezone
 
-
-    print("Start backup")
-
+    current_time = datetime.now(timezone)
+    print('##################################################')
+    print(f"Start backup at {current_time}")
 
     # Make an HTTP request and add the personal access token to the headers
     request = urllib.request.Request(url)
@@ -94,33 +103,46 @@ def backup_job():
             for repository in repositories:
                 name = repository['name']
                 url = repository['clone_url']
+                print('**************************************************')
                 print(url)
 
                 # add the username and token to the url
-                # url = add_credentials_to_clone_url(url, git_username, personal_access_token)
+                url = add_credentials_to_clone_url(url, git_username, personal_access_token)
 
                 if not os.path.exists("/data"):
                     os.makedirs("/data")
 
                 folder_name = f"/data/{name}"
-
                 # Check if the repository is already cloned, if not, clone it
                 if not os.path.exists(f"{folder_name}/.git"):
                     try:
+                        print(f'Cloning {name}')
                         subprocess.run(['git', 'clone', url, folder_name], check=True)
                         print(f'{name} is cloned')
                     except subprocess.CalledProcessError:
-                        print(f'Failed to clone {name}')
+                        print(f'! Failed to clone {name}')
                 else:
                     try:
                         # If the repository is already cloned, perform a 'git pull' to update
+                        print(f'Updating {name}')
                         subprocess.run(['git', 'pull'], cwd=folder_name, check=True)
                         print(f'{name} is updated')
                     except subprocess.CalledProcessError:
-                        print(f'Failed to update {name}')
+                        print(f'! Failed to update {name}')
         else:
             print('Error fetching repositories:', response.status)
 
+    end_time = datetime.now(timezone)
+    print(f"Ready at {current_time}")
+
+    # Minuten en seconden uit het totaal aantal seconden halen
+    # Het totale aantal seconden berekenen
+    total_seconds = (end_time - current_time).total_seconds()
+    minutes = int(total_seconds // 60)
+    seconds = int(total_seconds % 60)
+
+
+    print(f"The backup took {minutes}:{str(seconds).zfill(2)}")
 
 # Convert backup time to UTC
 time_object = datetime.strptime(backup_time, "%H:%M").time()
@@ -130,7 +152,10 @@ time_string = time_object.strftime("%H:%M")
 # Set schedule to run every day at the specified time in the desired timezone
 schedule.every().day.at(time_string).do(backup_job).timezone = timezone
 
-print(f"Checking every day at {time_string} - {desired_timezone}")
+print(f"Using {git_username} with email {git_email} for git.")
+print(f"URL: {url}")
+
+print(f"Cloning/Updating every day at {time_string} - {desired_timezone}")
 
 # Print timezone information
 print(f"Current timezone: {time.tzname[0]}")
@@ -138,10 +163,6 @@ print(f"Current timezone: {time.tzname[0]}")
 # Get current time
 current_time = datetime.now(timezone)
 print(f"Current time: {current_time}")
-
-print(f"Using {git_username} with email {git_email} for git.")
-print("Organization repository synchronization is started")
-print(f"URL: {url}")
 
 # test launch
 # backup_job()
