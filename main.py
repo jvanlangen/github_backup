@@ -1,4 +1,7 @@
-# (c) J. van Langen.
+__author__ = "Jeroen van Langen"
+__copyright__ = "Copyright (C) 2024 Jeroen van Langen"
+__license__ = "MIT"
+__version__ = "1.0"
 
 import schedule
 import urllib.request
@@ -6,7 +9,6 @@ import json
 import subprocess
 import os
 import time
-import sys
 import pytz
 from urllib.parse import urlparse
 from datetime import datetime
@@ -24,14 +26,16 @@ organization = os.getenv('ORGANIZATION', '')
 
 # Check if the organization name is set
 if not organization:
-    raise ValueError("Organization name is not set. Please provide an organization name using the ORGANIZATION environment variable.")
+    raise ValueError(
+        "Organization name is not set. Please provide an organization name using the ORGANIZATION environment variable.")
 
 
 personal_access_token = os.getenv('ACCESS_TOKEN', '')
 
 # Check if the personal access token is set
 if not personal_access_token:
-    raise ValueError("Personal access token is not set. Please provide a valid access token using the ACCESS_TOKEN environment variable.")
+    raise ValueError(
+        "Personal access token is not set. Please provide a valid access token using the ACCESS_TOKEN environment variable.")
 
 
 # Default backup time is set to 2:00
@@ -55,6 +59,8 @@ subprocess.run(['git', 'config', '--global', 'credential.helper', credential_hel
 timezone = pytz.timezone(desired_timezone)
 os.environ["TZ"] = desired_timezone
 
+# Construct GitHub API URL
+url = f'https://api.github.com/orgs/{organization}/repos'
 
 def add_credentials_to_clone_url(clone_url, username, token):
     """Add username and token to the clone URL if not already present."""
@@ -69,15 +75,12 @@ def add_credentials_to_clone_url(clone_url, username, token):
         new_url = parsed_url._replace(netloc=new_netloc).geturl()
         return new_url
 
-
 def backup_job():
     """Perform organization repository synchronization."""
-    # Construct GitHub API URL
-    url = f'https://api.github.com/orgs/{organization}/repos'
 
-    print(f"Using {git_username} with email {git_email} for git.")
-    print("Organization repository synchronization is started")
-    print(f"URL: {url}")
+
+    print("Start backup")
+
 
     # Make an HTTP request and add the personal access token to the headers
     request = urllib.request.Request(url)
@@ -135,6 +138,10 @@ print(f"Current timezone: {time.tzname[0]}")
 # Get current time
 current_time = datetime.now(timezone)
 print(f"Current time: {current_time}")
+
+print(f"Using {git_username} with email {git_email} for git.")
+print("Organization repository synchronization is started")
+print(f"URL: {url}")
 
 # test launch
 # backup_job()
