@@ -17,6 +17,7 @@ from functools import partial
 # auto flush
 print = partial(print, flush=True)
 
+
 # Read TIMEZONE environment variable, for example: Europe/Amsterdam
 desired_timezone = os.getenv("TIMEZONE", "")
 
@@ -24,7 +25,7 @@ desired_timezone = os.getenv("TIMEZONE", "")
 if not desired_timezone:
     raise ValueError(
         "desired_timezone is not set. Please provide a timezone using the " +
-        "TIMEZONE environment variable. for example: Europe/Amsterdam")
+        "'TIMEZONE' environment variable. for example: Europe/Amsterdam")
 
 
 # Organization name and GitHub access token
@@ -34,7 +35,7 @@ organization = os.getenv('ORGANIZATION', '')
 if not organization:
     raise ValueError(
         "Organization name is not set. Please provide an organization name " +
-        "using the ORGANIZATION environment variable.")
+        "using the 'ORGANIZATION' environment variable.")
 
 
 personal_access_token = os.getenv('ACCESS_TOKEN', '')
@@ -43,25 +44,33 @@ personal_access_token = os.getenv('ACCESS_TOKEN', '')
 if not personal_access_token:
     raise ValueError(
         "Personal access token is not set. Please provide a valid access token " +
-        "using the ACCESS_TOKEN environment variable.")
+        "using the 'ACCESS_TOKEN' environment variable.")
 
 
 # Default backup time is set to 2:00
 backup_time = os.getenv('BACKUP_TIME', '2:00')
 
+
 # GitHub credentials
 git_username = os.getenv('USERNAME', '')
+
+if not git_username:
+    raise ValueError(
+        "The GIT username is not set. Please provide a valid name " +
+        "using the 'USERNAME' environment variable.")
+
+
 git_email = os.getenv('EMAIL', '')
+
+if not git_email:
+    raise ValueError(
+        "The GIT EMAIL is not set. Please provide a valid email " +
+        "using the 'EMAIL' environment variable.")
+
 
 # Set Git global user name and email
 subprocess.run(['git', 'config', '--global', 'user.name', git_username])
 subprocess.run(['git', 'config', '--global', 'user.email', git_email])
-
-# subprocess.run(['git', 'config', '--global', 'credential.helper', 'store --file ~/.git-credentials'], check=True)
-
-# credential_helper_script = f'!f() {{ echo "username={git_username}"; echo "password={personal_access_token}"; }}; f'
-# subprocess.run(['git', 'config', '--global', 'credential.helper', credential_helper_script], shell=True, check=True)
-
 
 # Parse the desired timezone
 timezone = pytz.timezone(desired_timezone)
@@ -70,6 +79,7 @@ os.environ["TZ"] = desired_timezone
 # Construct GitHub API URL
 url = f'https://api.github.com/orgs/{organization}/repos'
 
+# add the credentials to the URL for the git commandline execution.
 def add_credentials_to_clone_url(clone_url, username, token):
     """Add username and token to the clone URL if not already present."""
     parsed_url = urlparse(clone_url)
@@ -83,6 +93,7 @@ def add_credentials_to_clone_url(clone_url, username, token):
         new_url = parsed_url._replace(netloc=new_netloc).geturl()
         return new_url
 
+# The actual backup job
 def backup_job():
     """Perform organization repository synchronization."""
     global url, timezone
@@ -91,15 +102,21 @@ def backup_job():
     print('##################################################')
     print(f"Start backup at {current_time}")
 
-    # Make an HTTP request and add the personal access token to the headers
+    # Make an HTTP request for the repo's and add the personal access token to the headers
     request = urllib.request.Request(url)
     request.add_header('Authorization', f'token {personal_access_token}')
 
+    # check the data directory
+    if not os.path.exists("/data"):
+        os.makedirs("/data")
+
     # Execute the request
     with urllib.request.urlopen(request) as response:
+        # if the request is succesfull, check the results.
         if response.status == 200:
             repositories = json.loads(response.read())
 
+            # execute per repo
             for repository in repositories:
                 name = repository['name']
                 url = repository['clone_url']
@@ -109,15 +126,17 @@ def backup_job():
                 # add the username and token to the url
                 url = add_credentials_to_clone_url(url, git_username, personal_access_token)
 
-                if not os.path.exists("/data"):
-                    os.makedirs("/data")
-
+                # set the path for the current repo
                 folder_name = f"/data/{name}"
+
                 # Check if the repository is already cloned, if not, clone it
+                # this means that if the directory exists, it handles it as a valid git repo
                 if not os.path.exists(f"{folder_name}/.git"):
                     try:
                         print(f'Cloning {name}')
-                        subprocess.run(['git', 'clone', url, folder_name], check=True)
+
+                        args = 'git clone ' + url + ' ' + folder_name
+                        subprocess.run(args, check=True, shell=True)
                         print(f'{name} is cloned')
                     except subprocess.CalledProcessError:
                         print(f'! Failed to clone {name}')
@@ -132,18 +151,19 @@ def backup_job():
         else:
             print('Error fetching repositories:', response.status)
 
+    # get the current time after the backup
     end_time = datetime.now(timezone)
     print(f"Ready at {current_time}")
 
-    # Minuten en seconden uit het totaal aantal seconden halen
-    # Het totale aantal seconden berekenen
+    # Calculate the duration
     total_seconds = (end_time - current_time).total_seconds()
     minutes = int(total_seconds // 60)
     seconds = int(total_seconds % 60)
 
-
+    # show the duration of the backup
     print(f"The backup took {minutes}:{str(seconds).zfill(2)}")
 
+# -------------------------------------------------------------
 # Convert backup time to UTC
 time_object = datetime.strptime(backup_time, "%H:%M").time()
 utc_time = timezone.localize(datetime.combine(datetime.today(), time_object)).astimezone(pytz.utc)
@@ -152,7 +172,7 @@ time_string = time_object.strftime("%H:%M")
 # Set schedule to run every day at the specified time in the desired timezone
 schedule.every().day.at(time_string).do(backup_job).timezone = timezone
 
-print(f"Using {git_username} with email {git_email} for git.")
+print(f"Using user {git_username} with email {git_email} for git.")
 print(f"URL: {url}")
 
 print(f"Cloning/Updating every day at {time_string} - {desired_timezone}")
@@ -165,7 +185,7 @@ current_time = datetime.now(timezone)
 print(f"Current time: {current_time}")
 
 # test launch
-# backup_job()
+#backup_job()
 
 while True:
     # Check schedule
