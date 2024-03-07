@@ -79,6 +79,7 @@ os.environ["TZ"] = desired_timezone
 # Construct GitHub API URL
 url = f'https://api.github.com/orgs/{organization}/repos'
 
+
 # add the credentials to the URL for the git commandline execution.
 def add_credentials_to_clone_url(clone_url, username, token):
     """Add username and token to the clone URL if not already present."""
@@ -92,6 +93,7 @@ def add_credentials_to_clone_url(clone_url, username, token):
         new_netloc = credentials + parsed_url.netloc
         new_url = parsed_url._replace(netloc=new_netloc).geturl()
         return new_url
+
 
 # The actual backup job
 def backup_job():
@@ -162,6 +164,7 @@ def backup_job():
 
     # show the duration of the backup
     print(f"The backup took {minutes}:{str(seconds).zfill(2)}")
+
 
 # -------------------------------------------------------------
 # Convert backup time to UTC
