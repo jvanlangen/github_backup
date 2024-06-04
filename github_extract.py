@@ -200,7 +200,7 @@ current_time = datetime.now(timezone)
 print(f"Current time: {current_time}")
 
 # test launch
-backup_job()
+#backup_job()
 
 while True:
     # Check schedule
