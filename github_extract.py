@@ -95,73 +95,85 @@ def add_credentials_to_clone_url(clone_url, username, token):
 
 # The actual backup job
 def backup_job():
-    """Perform organization repository synchronization."""
-    global url, timezone
+    first_time = True
+    for i in range(0, 5):
+        if not first_time:
+            print("Retry! 1 minute delay")
+            time.sleep(60)
 
-    current_time = datetime.now(timezone)
-    print('##################################################')
-    print(f"Start backup at {current_time}")
+        try:
+            """Perform organization repository synchronization."""
+            global url, timezone
 
-    # Make an HTTP request for the repo's and add the personal access token to the headers
-    request = urllib.request.Request(url)
-    request.add_header('Authorization', f'token {personal_access_token}')
+            current_time = datetime.now(timezone)
+            print('##################################################')
+            print(f"Start backup at {current_time}")
 
-    # check the data directory
-    if not os.path.exists("/data"):
-        os.makedirs("/data")
+            # Make an HTTP request for the repo's and add the personal access token to the headers
+            request = urllib.request.Request(url)
+            request.add_header('Authorization', f'token {personal_access_token}')
 
-    # Execute the request
-    with urllib.request.urlopen(request) as response:
-        # if the request is succesfull, check the results.
-        if response.status == 200:
-            repositories = json.loads(response.read())
+            # check the data directory
+            if not os.path.exists("/data"):
+                os.makedirs("/data")
 
-            # execute per repo
-            for repository in repositories:
-                name = repository['name']
-                url = repository['clone_url']
-                print('**************************************************')
-                print(url)
+            # Execute the request
+            with urllib.request.urlopen(request) as response:
+                # if the request is succesfull, check the results.
+                if response.status == 200:
+                    repositories = json.loads(response.read())
 
-                # add the username and token to the url
-                url = add_credentials_to_clone_url(url, git_username, personal_access_token)
+                    # execute per repo
+                    for repository in repositories:
+                        name = repository['name']
+                        url = repository['clone_url']
+                        print('**************************************************')
+                        print(url)
 
-                # set the path for the current repo
-                folder_name = f"/data/{name}"
+                        # add the username and token to the url
+                        url = add_credentials_to_clone_url(url, git_username, personal_access_token)
 
-                # Check if the repository is already cloned, if not, clone it
-                # this means that if the directory exists, it handles it as a valid git repo
-                if not os.path.exists(f"{folder_name}/.git"):
-                    try:
-                        print(f'Cloning {name}')
+                        # set the path for the current repo
+                        folder_name = f"/data/{name}"
 
-                        args = 'git clone ' + url + ' ' + folder_name
-                        subprocess.run(args, check=True, shell=True)
-                        print(f'{name} is cloned')
-                    except subprocess.CalledProcessError:
-                        print(f'! Failed to clone {name}')
+                        # Check if the repository is already cloned, if not, clone it
+                        # this means that if the directory exists, it handles it as a valid git repo
+                        if not os.path.exists(f"{folder_name}/.git"):
+                            try:
+                                print(f'Cloning {name}')
+
+                                args = 'git clone ' + url + ' ' + folder_name
+                                subprocess.run(args, check=True, shell=True)
+                                print(f'{name} is cloned')
+                            except subprocess.CalledProcessError:
+                                print(f'! Failed to clone {name}')
+                        else:
+                            try:
+                                # If the repository is already cloned, perform a 'git pull' to update
+                                print(f'Updating {name}')
+                                subprocess.run(['git', 'pull'], cwd=folder_name, check=True)
+                                print(f'{name} is updated')
+                            except subprocess.CalledProcessError:
+                                print(f'! Failed to update {name}')
                 else:
-                    try:
-                        # If the repository is already cloned, perform a 'git pull' to update
-                        print(f'Updating {name}')
-                        subprocess.run(['git', 'pull'], cwd=folder_name, check=True)
-                        print(f'{name} is updated')
-                    except subprocess.CalledProcessError:
-                        print(f'! Failed to update {name}')
-        else:
-            print('Error fetching repositories:', response.status)
+                    raise ValueError('Error fetching repositories:', response.status)
 
-    # get the current time after the backup
-    end_time = datetime.now(timezone)
-    print(f"Ready at {current_time}")
+            # get the current time after the backup
+            end_time = datetime.now(timezone)
+            print(f"Ready at {current_time}")
 
-    # Calculate the duration
-    total_seconds = (end_time - current_time).total_seconds()
-    minutes = int(total_seconds // 60)
-    seconds = int(total_seconds % 60)
+            # Calculate the duration
+            total_seconds = (end_time - current_time).total_seconds()
+            minutes = int(total_seconds // 60)
+            seconds = int(total_seconds % 60)
 
-    # show the duration of the backup
-    print(f"The backup took {minutes}:{str(seconds).zfill(2)}")
+            # show the duration of the backup
+            print(f"The backup took {minutes}:{str(seconds).zfill(2)}")
+            break # from the retry loop
+
+        except Exception as e:
+            # something went wrong. retrying 4x
+            print(e)
 
 # -------------------------------------------------------------
 # Convert backup time to UTC
@@ -185,7 +197,7 @@ current_time = datetime.now(timezone)
 print(f"Current time: {current_time}")
 
 # test launch
-#backup_job()
+backup_job()
 
 while True:
     # Check schedule
