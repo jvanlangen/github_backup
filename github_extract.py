@@ -111,7 +111,9 @@ def backup_job():
             print('##################################################')
             print(f"Start backup at {current_time}")
 
+            url = f'https://api.github.com/orgs/{organization}/repos'
             # Make an HTTP request for the repo's and add the personal access token to the headers
+            print("Connecting to", url)
             request = urllib.request.Request(url)
             request.add_header('Authorization', f'token {personal_access_token}')
 
